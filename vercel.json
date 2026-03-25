@@ -4,15 +4,9 @@
   "outputDirectory": "dist/client",
   "installCommand": "pnpm install",
   "framework": null,
-  "functions": {
-    "api/index.js": {
-      "memory": 512,
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
-    { "source": "/api/trpc/:path*", "destination": "/api/index.js" },
-    { "source": "/qr/:id", "destination": "/api/index.js" },
+    { "source": "/api/trpc/:path*", "destination": "/api/index.ts" },
+    { "source": "/qr/:id", "destination": "/api/index.ts" },
     { "source": "/((?!assets|favicon|_next).*)", "destination": "/index.html" }
   ]
 }
