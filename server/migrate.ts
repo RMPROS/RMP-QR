@@ -1,0 +1,44 @@
+import "dotenv/config";
+import { neon } from "@neondatabase/serverless";
+
+const sql = neon(process.env.DATABASE_URL!);
+
+async function migrate() {
+  console.log("Running migrations...");
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS qr_codes (
+      id SERIAL PRIMARY KEY,
+      qr_number INTEGER NOT NULL UNIQUE,
+      redirect_path VARCHAR(100) NOT NULL UNIQUE,
+      destination_url TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      scan_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS scan_logs (
+      id SERIAL PRIMARY KEY,
+      qr_code_id INTEGER NOT NULL REFERENCES qr_codes(id) ON DELETE CASCADE,
+      qr_number INTEGER NOT NULL,
+      ip_address VARCHAR(64),
+      city VARCHAR(128),
+      region VARCHAR(128),
+      country VARCHAR(64),
+      device_type VARCHAR(32),
+      user_agent TEXT,
+      referrer TEXT,
+      scanned_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `;
+
+  console.log("Migrations complete.");
+}
+
+migrate().catch((err) => {
+  console.error("Migration failed:", err);
+  process.exit(1);
+});
