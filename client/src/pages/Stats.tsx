@@ -59,7 +59,7 @@ export default function Stats() {
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
-              <Bar dataKey="scans" fill="oklch(0.5 0.2 260)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="scans" fill="hsl(221, 83%, 53%)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}

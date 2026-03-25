@@ -35,6 +35,20 @@ async function migrate() {
     )
   `;
 
+  // Indexes for fast redirect lookups and sort performance
+  await sql`
+    CREATE INDEX IF NOT EXISTS qr_codes_redirect_path_idx ON qr_codes (redirect_path)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS qr_codes_scan_count_idx ON qr_codes (scan_count DESC)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS scan_logs_qr_code_id_idx ON scan_logs (qr_code_id)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS scan_logs_scanned_at_idx ON scan_logs (scanned_at DESC)
+  `;
+
   console.log("Migrations complete.");
 }
 

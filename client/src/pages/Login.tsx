@@ -34,7 +34,7 @@ export default function Login() {
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-semibold tracking-tight">QR Redirect Manager</h1>
-            <p className="text-sm text-muted-foreground mt-1">RentalMarketingPro Admin</p>
+            <p className="text-sm text-muted-foreground mt-1">Admin Dashboard</p>
           </div>
         </div>
 

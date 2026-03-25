@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useState, useMemo } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { Search, Edit2, Clock, ChevronLeft, ChevronRight, CheckSquare, ExternalLink } from "lucide-react";
 import ScanLogDrawer from "@/components/ScanLogDrawer";
@@ -18,6 +18,7 @@ export default function QRDashboard() {
   const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [scanDrawerQr, setScanDrawerQr] = useState<{ id: number; number: number } | null>(null);
 
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const utils = trpc.useUtils();
 
   const { data, isLoading } = trpc.qr.list.useQuery(
@@ -60,8 +61,8 @@ export default function QRDashboard() {
 
   const handleSearch = (val: string) => {
     setSearch(val);
-    clearTimeout((window as any)._searchTimer);
-    (window as any)._searchTimer = setTimeout(() => { setDebouncedSearch(val); setPage(1); }, 300);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => { setDebouncedSearch(val); setPage(1); }, 300);
   };
 
   return (
@@ -71,7 +72,7 @@ export default function QRDashboard() {
         <div>
           <h1 className="text-xl font-semibold">QR Codes</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {total} codes · redirecting via <code className="text-xs bg-muted px-1 py-0.5 rounded">admin.rentalmarketingpro.com/qr/###</code>
+            {total} codes · redirecting via <code className="text-xs bg-muted px-1 py-0.5 rounded">{window.location.hostname}/qr/###</code>
           </p>
         </div>
         {selected.size > 0 && (
@@ -156,7 +157,7 @@ export default function QRDashboard() {
                   </td>
                   <td className="px-4 py-3 font-mono font-medium">{String(qr.qrNumber).padStart(3, "0")}</td>
                   <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
-                    admin.rentalmarketingpro.com{qr.redirectPath}
+                    {window.location.hostname}{qr.redirectPath}
                   </td>
                   <td className="px-4 py-3 max-w-xs">
                     {editingId === qr.id ? (

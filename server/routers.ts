@@ -90,7 +90,7 @@ export const appRouter = t.router({
       .mutation(({ input }) => db.updateQrCodeDestination(input.id, input.destinationUrl)),
 
     bulkUpdateDestination: adminProcedure
-      .input(z.object({ ids: z.array(z.number()).min(1), destinationUrl: z.string().url() }))
+      .input(z.object({ ids: z.array(z.number()).min(1).max(500), destinationUrl: z.string().url() }))
       .mutation(({ input }) => db.bulkUpdateDestination(input.ids, input.destinationUrl)),
 
     toggleStatus: adminProcedure

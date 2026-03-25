@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Search, Monitor, Smartphone, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
@@ -9,6 +9,7 @@ export default function ScanHistory() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data, isLoading } = trpc.qr.allScanLogs.useQuery(
     { page, pageSize: PAGE_SIZE, search: debouncedSearch || undefined },
@@ -21,8 +22,8 @@ export default function ScanHistory() {
 
   const handleSearch = (val: string) => {
     setSearch(val);
-    clearTimeout((window as any)._scanSearchTimer);
-    (window as any)._scanSearchTimer = setTimeout(() => { setDebouncedSearch(val); setPage(1); }, 300);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => { setDebouncedSearch(val); setPage(1); }, 300);
   };
 
   return (

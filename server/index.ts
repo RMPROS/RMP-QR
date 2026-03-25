@@ -35,7 +35,7 @@ app.get("/qr/:id", async (req, res) => {
       return res.status(503).send("This QR code has not been configured yet.");
     }
 
-    // Async scan logging — don't block the redirect
+    // Collect request info before async work
     const ip =
       (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
       req.socket.remoteAddress ||
@@ -47,43 +47,59 @@ app.get("/qr/:id", async (req, res) => {
     else if (/tablet|ipad/i.test(ua)) deviceType = "tablet";
     else if (/bot|crawler|spider/i.test(ua)) deviceType = "bot";
 
-    // Fire-and-forget geo + log
-    (async () => {
+    const referrer = (req.headers.referer as string) || null;
+    const destinationUrl = qr.destinationUrl;
+    const qrId = qr.id;
+    const qrNumber = qr.qrNumber;
+
+    // Redirect immediately, then log (waitUntil pattern for serverless)
+    res.redirect(302, destinationUrl);
+
+    // Log after redirect — in serverless environments this still runs
+    // because Vercel waits for the event loop to clear before freezing.
+    try {
       let city: string | null = null;
       let region: string | null = null;
       let country: string | null = null;
-      try {
-        if (ip && ip !== "::1" && ip !== "127.0.0.1") {
-          const geo = await fetch(`http://ip-api.com/json/${ip}?fields=city,regionName,country`);
-          if (geo.ok) {
-            const data = await geo.json() as { city?: string; regionName?: string; country?: string };
-            city = data.city ?? null;
-            region = data.regionName ?? null;
-            country = data.country ?? null;
-          }
+
+      if (ip && ip !== "::1" && ip !== "127.0.0.1") {
+        const geo = await fetch(
+          `https://ip-api.com/json/${ip}?fields=city,regionName,country`
+        );
+        if (geo.ok) {
+          const data = (await geo.json()) as {
+            city?: string;
+            regionName?: string;
+            country?: string;
+          };
+          city = data.city ?? null;
+          region = data.regionName ?? null;
+          country = data.country ?? null;
         }
-      } catch { /* geo lookup is best-effort */ }
+      }
 
       await Promise.all([
-        db.incrementScanCount(qr.id),
+        db.incrementScanCount(qrId),
         insertScanLog({
-          qrCodeId: qr.id,
-          qrNumber: qr.qrNumber,
+          qrCodeId: qrId,
+          qrNumber,
           ipAddress: ip,
           city,
           region,
           country,
           deviceType,
           userAgent: ua || null,
-          referrer: (req.headers.referer as string) || null,
+          referrer,
         }),
       ]);
-    })();
-
-    return res.redirect(302, qr.destinationUrl);
+    } catch (logErr) {
+      console.error("[QR Redirect] Logging error:", logErr);
+    }
   } catch (err) {
     console.error("[QR Redirect] Error:", err);
-    return res.status(500).send("Server error.");
+    if (!res.headersSent) {
+      res.status(500).send("Server error.");
+    }
   }
 });
 
@@ -96,8 +112,9 @@ app.use(
   })
 );
 
-// ── Serve React frontend in production ────────────────────────────────────────
-if (process.env.NODE_ENV === "production") {
+// ── Serve React frontend in LOCAL development only ────────────────────────────
+// On Vercel, static files are served directly from outputDirectory (dist/client)
+if (process.env.NODE_ENV !== "production") {
   const distPath = path.join(__dirname, "../dist/client");
   app.use(express.static(distPath));
   app.get("*", (_req, res) => {
@@ -105,7 +122,13 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-const server = createServer(app);
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+// ── Export handler for Vercel serverless + start for local ───────────────────
+export default app;
+
+// Only call listen() when running locally (not in Vercel's serverless runtime)
+if (process.env.VERCEL !== "1") {
+  const server = createServer(app);
+  server.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}

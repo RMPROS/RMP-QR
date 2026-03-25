@@ -62,6 +62,8 @@ Open [http://localhost:5173](http://localhost:5173) and log in with your `ADMIN_
 
 ## Deploying to Vercel
 
+> **Architecture note:** This project runs as a Vercel serverless function. The Express app is compiled by esbuild into `dist/server.js`, re-exported from `api/index.js` (Vercel's function entry point), and the React frontend is served from `dist/client` as static files. **Do not** set a custom "Start Command" in Vercel — serverless functions don't have one.
+
 ### Step 1: Push to GitHub
 
 ```bash
@@ -77,10 +79,11 @@ gh repo create qr-redirect-manager --private --push --source .
 2. Click **Add New → Project**
 3. Import your `qr-redirect-manager` GitHub repo
 4. Vercel will auto-detect the settings from `vercel.json`
+5. **Do NOT override** the Build Command or Output Directory — `vercel.json` handles it
 
 ### Step 3: Add Environment Variables
 
-In the Vercel project settings → **Environment Variables**, add:
+In Vercel project → **Settings → Environment Variables**, add:
 
 | Key | Value |
 |-----|-------|
@@ -91,27 +94,38 @@ In the Vercel project settings → **Environment Variables**, add:
 
 ### Step 4: Deploy
 
-Click **Deploy**. Vercel will build and deploy the app.
+Click **Deploy**. Vercel will:
+1. Run `pnpm install`
+2. Run `pnpm build` (builds React → `dist/client`, server → `dist/server.js`)
+3. Serve `dist/client` as static files
+4. Expose `api/index.js` as a serverless function handling `/qr/*` and `/api/trpc/*`
 
 ### Step 5: Run migrations on production
 
-After the first deploy, run the migration and seed against your production Neon database:
+After the first deploy, run migrations against your Neon database:
 
 ```bash
-# From your local machine with .env pointing to production DATABASE_URL
+# From your local machine with DATABASE_URL pointing to production Neon
 pnpm db:migrate
 pnpm db:seed
 ```
 
 ### Step 6: Connect your domain
 
-In Vercel → **Settings → Domains**, add `admin.rentalmarketingpro.com`.
+In Vercel → **Settings → Domains**, add your domain (e.g., `qr.yourdomain.com`).
 
-Then in GoDaddy DNS, add:
+In your DNS provider, add:
 
 | Type | Name | Value |
 |------|------|-------|
-| `CNAME` | `admin` | `cname.vercel-dns.com` |
+| `CNAME` | `qr` | `cname.vercel-dns.com` |
+
+### Troubleshooting 404s
+
+- **`/qr/001` returns 404** → Check that `pnpm db:seed` ran successfully against your production Neon DB and that `DATABASE_URL` is set in Vercel env vars.
+- **`/api/trpc/*` returns 404** → Verify the Vercel build succeeded and `dist/server.js` was created. Check build logs in Vercel dashboard.
+- **Dashboard login fails** → Confirm `ADMIN_PASSWORD` and `JWT_SECRET` are set in Vercel environment variables.
+- **Still getting 404 after env var changes** → Trigger a redeploy: Vercel → Deployments → Redeploy.
 
 ---
 

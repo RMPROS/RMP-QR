@@ -4,24 +4,15 @@
   "outputDirectory": "dist/client",
   "installCommand": "pnpm install",
   "framework": null,
-  "builds": [
-    {
-      "src": "dist/index.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/index.js": {
+      "memory": 512,
+      "maxDuration": 30
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/dist/index.js"
-    },
-    {
-      "src": "/qr/(.*)",
-      "dest": "/dist/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/dist/client/$1"
-    }
+  },
+  "rewrites": [
+    { "source": "/api/trpc/:path*", "destination": "/api/index.js" },
+    { "source": "/qr/:id", "destination": "/api/index.js" },
+    { "source": "/((?!assets|favicon|_next).*)", "destination": "/index.html" }
   ]
 }
