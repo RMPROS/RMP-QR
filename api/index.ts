@@ -192,11 +192,17 @@ const appRouter = t.router({
       .input(z.object({ page: z.number().min(1).default(1), pageSize: z.number().min(1).max(100).default(50), search: z.string().optional(), status: z.enum(["active", "inactive", "all"]).default("all") }))
       .query(({ input }) => listQrCodes(input)),
     updateDestination: adminProcedure
-      .input(z.object({ id: z.number(), destinationUrl: z.string().url() }))
-      .mutation(({ input }) => updateQrCodeDestination(input.id, input.destinationUrl)),
+      .input(z.object({ id: z.number(), destinationUrl: z.string().min(1) }))
+      .mutation(({ input }) => {
+        const url = input.destinationUrl.startsWith("http") ? input.destinationUrl : "https://" + input.destinationUrl;
+        return updateQrCodeDestination(input.id, url);
+      }),
     bulkUpdateDestination: adminProcedure
-      .input(z.object({ ids: z.array(z.number()).min(1).max(500), destinationUrl: z.string().url() }))
-      .mutation(({ input }) => bulkUpdateDestination(input.ids, input.destinationUrl)),
+      .input(z.object({ ids: z.array(z.number()).min(1).max(500), destinationUrl: z.string().min(1) }))
+      .mutation(({ input }) => {
+        const url = input.destinationUrl.startsWith("http") ? input.destinationUrl : "https://" + input.destinationUrl;
+        return bulkUpdateDestination(input.ids, url);
+      }),
     toggleStatus: adminProcedure
       .input(z.object({ id: z.number(), isActive: z.boolean() }))
       .mutation(({ input }) => toggleQrCodeStatus(input.id, input.isActive)),
