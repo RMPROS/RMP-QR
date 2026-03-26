@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { QrCode, BarChart2, History, LogOut, Menu, X } from "lucide-react";
+import { QrCode, BarChart2, History, LogOut, Menu } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import Login from "@/pages/Login";
@@ -15,18 +15,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // AUTH TEMPORARILY DISABLED
-  // if (loading) { return <div>loading...</div> }
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0A2342" }}>
+        <div className="h-8 w-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#FF8C00", borderTopColor: "transparent" }} />
+      </div>
+    );
+  }
 
-  // AUTH TEMPORARILY DISABLED
-  // if (!user) return <Login />;
+  if (!user) return <Login />;
 
   const NavContent = () => (
-    <nav className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 h-16 border-b">
-        <QrCode className="h-5 w-5 text-primary shrink-0" />
-        <span className="font-semibold text-sm tracking-tight">QR Manager</span>
+    <nav className="flex flex-col h-full" style={{ backgroundColor: "#0A2342" }}>
+      {/* Logo / Brand */}
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-white/10">
+        <div className="h-8 w-8 rounded-lg overflow-hidden bg-white flex items-center justify-center shrink-0">
+          <img src="/logo.png" alt="RMP" className="h-7 w-7 object-contain" />
+        </div>
+        <div className="flex flex-col leading-tight">
+          <span className="text-xs font-bold text-white tracking-tight">Rental Marketing</span>
+          <span className="text-xs font-bold tracking-tight" style={{ color: "#FF8C00" }}>Pros</span>
+        </div>
       </div>
+
+      {/* Nav items */}
       <div className="flex-1 py-3 px-2 space-y-0.5">
         {navItems.map((item) => {
           const isActive = location === item.path;
@@ -34,11 +46,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <button
               key={item.path}
               onClick={() => { setLocation(item.path); setMobileOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+              style={{
+                backgroundColor: isActive ? "#FF8C00" : "transparent",
+                color: isActive ? "#ffffff" : "#A1A0A5",
+              }}
+              onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,140,0,0.15)"; (e.currentTarget as HTMLElement).style.color = "#ffffff"; } }}
+              onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "#A1A0A5"; } }}
             >
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
@@ -46,10 +60,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           );
         })}
       </div>
-      <div className="p-3 border-t">
+
+      {/* Sign out */}
+      <div className="p-3 border-t border-white/10">
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all"
+          style={{ color: "#A1A0A5" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(220,38,38,0.15)"; (e.currentTarget as HTMLElement).style.color = "#f87171"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "#A1A0A5"; }}
         >
           <LogOut className="h-4 w-4 shrink-0" />
           Sign out
@@ -59,17 +78,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "#F4F4F4" }}>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r bg-card">
+      <aside className="hidden md:flex w-56 shrink-0 flex-col shadow-xl">
         <NavContent />
       </aside>
 
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="relative w-56 h-full bg-card border-r shadow-xl">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
+          <aside className="relative w-56 h-full shadow-xl">
             <NavContent />
           </aside>
         </div>
@@ -78,14 +97,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center gap-3 h-14 px-4 border-b bg-card">
+        <header className="md:hidden flex items-center gap-3 h-14 px-4 border-b bg-white shadow-sm">
           <button
             onClick={() => setMobileOpen(true)}
-            className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+            className="h-9 w-9 flex items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5" style={{ color: "#0A2342" }} />
           </button>
-          <span className="font-semibold text-sm">
+          <img src="/logo.png" alt="RMP" className="h-7 w-7 object-contain" />
+          <span className="font-semibold text-sm" style={{ color: "#0A2342" }}>
             {navItems.find((n) => n.path === location)?.label ?? "QR Manager"}
           </span>
         </header>
