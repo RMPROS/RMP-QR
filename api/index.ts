@@ -8,6 +8,31 @@ import { insertScanLog } from "../server/db";
 const app = express();
 app.use(express.json());
 
+// ── DATABASE DEBUG ENDPOINT ───────────────────────────────────────────────────
+app.get("/api/debug", async (_req, res) => {
+  const dbUrl = process.env.DATABASE_URL ?? "";
+  const result: Record<string, any> = {
+    hasDbUrl: !!dbUrl,
+    dbUrlLength: dbUrl.length,
+    dbUrlPrefix: dbUrl.substring(0, 30) + "...",
+    nodeEnv: process.env.NODE_ENV,
+    hasAdminPassword: !!process.env.ADMIN_PASSWORD,
+    hasJwtSecret: !!process.env.JWT_SECRET,
+  };
+
+  try {
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon(dbUrl);
+    const rows = await sql`SELECT count(*)::int as count FROM qr_codes`;
+    result.dbConnected = true;
+    result.qrCodeCount = rows[0]?.count ?? 0;
+  } catch (err: any) {
+    result.dbConnected = false;
+    result.dbError = err?.message ?? String(err);
+  }
+
+  res.json(result);
+});
 
 // ── Public QR redirect endpoint ───────────────────────────────────────────────
 app.get("/qr/:id", async (req, res) => {
