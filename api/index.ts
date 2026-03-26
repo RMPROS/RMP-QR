@@ -149,19 +149,21 @@ async function getAllScanLogs(opts: { page: number; pageSize: number; search?: s
 
 
 async function getMaxQrNumber(): Promise<number> {
+  const sql = getSql();
   const raw = await sql.query(`SELECT COALESCE(MAX(qr_number), 0)::int as max FROM qr_codes`);
   const rows = (raw as any).rows ?? raw;
   return Number(rows[0]?.max ?? 0);
 }
 
 async function addQrCodes(from: number, to: number): Promise<number> {
+  const sql = getSql();
   const values = [];
   for (let i = from; i <= to; i++) {
     const padded = String(i).padStart(3, "0");
     values.push(`(${i}, '/qr/${padded}', true)`);
   }
   if (values.length === 0) return 0;
-  const raw = await sql.query(
+  await sql.query(
     `INSERT INTO qr_codes (qr_number, redirect_path, is_active)
      OVERRIDING SYSTEM VALUE
      VALUES ${values.join(",")}
