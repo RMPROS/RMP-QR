@@ -8,6 +8,21 @@ import { insertScanLog } from "../server/db";
 const app = express();
 app.use(express.json());
 
+// ── TEMPORARY DEBUG — remove after fixing login ───────────────────────────────
+app.get("/api/debug-auth", (_req, res) => {
+  const raw = process.env.ADMIN_PASSWORD ?? "";
+  res.json({
+    length: raw.length,
+    trimmedLength: raw.trim().length,
+    firstCharCode: raw.charCodeAt(0),
+    lastCharCode: raw.charCodeAt(raw.length - 1),
+    hasLeadingSpace: raw !== raw.trimStart(),
+    hasTrailingSpace: raw !== raw.trimEnd(),
+    nodeEnv: process.env.NODE_ENV,
+  });
+});
+
+
 // ── Public QR redirect endpoint ───────────────────────────────────────────────
 app.get("/qr/:id", async (req, res) => {
   const id = req.params.id;
