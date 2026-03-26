@@ -1,27 +1,23 @@
 import express from "express";
-import * as trpcExpress from "@trpc/server/adapters/express";
-import { appRouter } from "../server/routers";
-import { createContext } from "../server/context";
-import * as db from "../server/db";
-import { insertScanLog } from "../server/db";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 
 const app = express();
 app.use(express.json());
 
-// ── DATABASE DEBUG ENDPOINT ───────────────────────────────────────────────────
+// ── DEBUG ─────────────────────────────────────────────────────────────────────
 app.get("/api/debug", async (_req, res) => {
   const dbUrl = process.env.DATABASE_URL ?? "";
   const result: Record<string, any> = {
     hasDbUrl: !!dbUrl,
     dbUrlLength: dbUrl.length,
-    dbUrlPrefix: dbUrl.substring(0, 30) + "...",
+    dbUrlStart: dbUrl.substring(0, 25) + "...",
     nodeEnv: process.env.NODE_ENV,
     hasAdminPassword: !!process.env.ADMIN_PASSWORD,
     hasJwtSecret: !!process.env.JWT_SECRET,
   };
 
   try {
-    const { neon } = await import("@neondatabase/serverless");
     const sql = neon(dbUrl);
     const rows = await sql`SELECT count(*)::int as count FROM qr_codes`;
     result.dbConnected = true;
@@ -34,61 +30,57 @@ app.get("/api/debug", async (_req, res) => {
   res.json(result);
 });
 
-// ── Public QR redirect endpoint ───────────────────────────────────────────────
-app.get("/qr/:id", async (req, res) => {
-  const id = req.params.id;
-  const paddedId = id.padStart(3, "0");
-
+// ── tRPC + QR routes loaded separately ───────────────────────────────────────
+// Lazy import to isolate any crash to the debug endpoint above
+let routesAttached = false;
+async function attachRoutes() {
+  if (routesAttached) return;
+  routesAttached = true;
   try {
-    const qr = await db.getQrCodeByPath(`/qr/${paddedId}`);
+    const [
+      { default: trpcExpress },
+      { appRouter },
+      { createContext },
+      db,
+      { insertScanLog },
+    ] = await Promise.all([
+      import("@trpc/server/adapters/express"),
+      import("../server/routers"),
+      import("../server/context"),
+      import("../server/db"),
+      import("../server/db"),
+    ]);
 
-    if (!qr) return res.status(404).send("QR code not found.");
-    if (!qr.isActive) return res.status(410).send("This QR code is no longer active.");
-    if (!qr.destinationUrl) return res.status(503).send("This QR code has not been configured yet.");
+    app.get("/qr/:id", async (req, res) => {
+      const paddedId = req.params.id.padStart(3, "0");
+      try {
+        const qr = await db.getQrCodeByPath(`/qr/${paddedId}`);
+        if (!qr) return res.status(404).send("QR code not found.");
+        if (!qr.isActive) return res.status(410).send("QR code inactive.");
+        if (!qr.destinationUrl) return res.status(503).send("QR code not configured.");
 
-    const ip =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-      req.socket.remoteAddress ||
-      null;
-    const ua = req.headers["user-agent"] || "";
-    let deviceType = "desktop";
-    if (/mobile|android|iphone|ipad|tablet/i.test(ua)) deviceType = "mobile";
-    else if (/bot|crawler|spider/i.test(ua)) deviceType = "bot";
-    const referrer = (req.headers.referer as string) || null;
-    const { destinationUrl, id: qrId, qrNumber } = qr;
+        const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || null;
+        const ua = req.headers["user-agent"] || "";
+        const deviceType = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : /bot|crawler/i.test(ua) ? "bot" : "desktop";
+        res.redirect(302, qr.destinationUrl);
 
-    res.redirect(302, destinationUrl);
-
-    try {
-      let city: string | null = null;
-      let region: string | null = null;
-      let country: string | null = null;
-      if (ip && ip !== "::1" && ip !== "127.0.0.1") {
-        const geo = await fetch(`https://ip-api.com/json/${ip}?fields=city,regionName,country`);
-        if (geo.ok) {
-          const data = await geo.json() as { city?: string; regionName?: string; country?: string };
-          city = data.city ?? null;
-          region = data.regionName ?? null;
-          country = data.country ?? null;
-        }
+        try {
+          await Promise.all([
+            db.incrementScanCount(qr.id),
+            insertScanLog({ qrCodeId: qr.id, qrNumber: qr.qrNumber, ipAddress: ip, city: null, region: null, country: null, deviceType, userAgent: ua || null, referrer: (req.headers.referer as string) || null }),
+          ]);
+        } catch {}
+      } catch (err) {
+        if (!res.headersSent) res.status(500).send("Server error.");
       }
-      await Promise.all([
-        db.incrementScanCount(qrId),
-        insertScanLog({ qrCodeId: qrId, qrNumber, ipAddress: ip, city, region, country, deviceType, userAgent: ua || null, referrer }),
-      ]);
-    } catch (logErr) {
-      console.error("[QR] Log error:", logErr);
-    }
-  } catch (err) {
-    console.error("[QR] Error:", err);
-    if (!res.headersSent) res.status(500).send("Server error.");
-  }
-});
+    });
 
-// ── tRPC ──────────────────────────────────────────────────────────────────────
-app.use(
-  "/api/trpc",
-  trpcExpress.createExpressMiddleware({ router: appRouter, createContext })
-);
+    app.use("/api/trpc", trpcExpress.createExpressMiddleware({ router: appRouter, createContext }));
+  } catch (err: any) {
+    console.error("[ROUTE ATTACH ERROR]", err?.message ?? err);
+  }
+}
+
+attachRoutes();
 
 export default app;
