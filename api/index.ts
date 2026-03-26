@@ -228,9 +228,23 @@ app.use(express.json());
 app.get("/api/debug", async (_req, res) => {
   try {
     const sql = getSql();
-    const raw = await sql.query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'qr_codes' ORDER BY ordinal_position`);
+    // Test exact select query
+    const raw = await sql.query(`SELECT id, qr_number, redirect_path, destination_url, is_active, scan_count FROM qr_codes ORDER BY qr_number LIMIT 3`);
     const rows = (raw as any).rows ?? raw;
-    res.json({ columns: rows });
+    // Test exact update query with row 1
+    let updateResult: any = null;
+    let updateError: any = null;
+    if (rows.length > 0) {
+      try {
+        const testId = rows[0].id;
+        const testUrl = rows[0].destination_url ?? "https://test.com";
+        await sql.query(`UPDATE qr_codes SET destination_url = $1, updated_at = NOW() WHERE id = $2`, [testUrl, testId]);
+        updateResult = { success: true, id: testId, type: typeof testId };
+      } catch (e: any) {
+        updateError = e.message;
+      }
+    }
+    res.json({ rowCount: rows.length, firstRow: rows[0], idType: typeof rows[0]?.id, updateResult, updateError });
   } catch (err: any) {
     res.json({ success: false, error: err?.message ?? String(err) });
   }
