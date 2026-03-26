@@ -5,7 +5,7 @@
   "installCommand": "pnpm install",
   "framework": null,
   "rewrites": [
-    { "source": "/api/trpc/:path*", "destination": "/api/index.ts" },
+    { "source": "/api/:path*", "destination": "/api/index.ts" },
     { "source": "/qr/:id", "destination": "/api/index.ts" },
     { "source": "/((?!assets|favicon|_next).*)", "destination": "/index.html" }
   ]
