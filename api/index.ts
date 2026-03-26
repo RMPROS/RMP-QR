@@ -43,12 +43,12 @@ async function listQrCodes(opts: { page: number; pageSize: number; search?: stri
 
   return {
     rows: rows.map((r: any) => ({
-      id: r.id,
-      qrNumber: r.qr_number,
+      id: Number(r.id),
+      qrNumber: Number(r.qr_number),
       redirectPath: r.redirect_path,
-      destinationUrl: r.destination_url,
-      isActive: r.is_active,
-      scanCount: r.scan_count,
+      destinationUrl: r.destination_url ?? null,
+      isActive: Boolean(r.is_active),
+      scanCount: Number(r.scan_count ?? 0),
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     })),
@@ -61,7 +61,7 @@ async function getQrCodeByPath(path: string) {
   const rows = await sql.query(`SELECT * FROM qr_codes WHERE redirect_path = $1 LIMIT 1`, [path]);
   if (!rows[0]) return null;
   const r = rows[0] as any;
-  return { id: r.id, qrNumber: r.qr_number, redirectPath: r.redirect_path, destinationUrl: r.destination_url, isActive: r.is_active, scanCount: r.scan_count };
+  return { id: Number(r.id), qrNumber: Number(r.qr_number), redirectPath: r.redirect_path, destinationUrl: r.destination_url ?? null, isActive: Boolean(r.is_active), scanCount: Number(r.scan_count ?? 0) };
 }
 
 async function updateQrCodeDestination(id: number, destinationUrl: string) {
@@ -96,13 +96,13 @@ async function getQrStats() {
     FROM qr_codes
   `);
   const r = rows[0] as any;
-  return { total: r.total, active: r.active, inactive: r.inactive, configured: r.configured, totalScans: r.total_scans };
+  return { total: Number(r.total ?? 0), active: Number(r.active ?? 0), inactive: Number(r.inactive ?? 0), configured: Number(r.configured ?? 0), totalScans: Number(r.total_scans ?? 0) };
 }
 
 async function getTopQrCodes(limit: number) {
   const sql = getSql();
   const rows = await sql.query(`SELECT * FROM qr_codes ORDER BY scan_count DESC LIMIT ${limit}`);
-  return rows.map((r: any) => ({ id: r.id, qrNumber: r.qr_number, redirectPath: r.redirect_path, destinationUrl: r.destination_url, isActive: r.is_active, scanCount: r.scan_count }));
+  return rows.map((r: any) => ({ id: Number(r.id), qrNumber: Number(r.qr_number), redirectPath: r.redirect_path, destinationUrl: r.destination_url ?? null, isActive: Boolean(r.is_active), scanCount: Number(r.scan_count ?? 0) }));
 }
 
 async function insertScanLog(log: { qrCodeId: number; qrNumber: number; ipAddress: string | null; city: string | null; region: string | null; country: string | null; deviceType: string; userAgent: string | null; referrer: string | null }) {
