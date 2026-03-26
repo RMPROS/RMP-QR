@@ -15,15 +15,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
-  }
+  // AUTH TEMPORARILY DISABLED
+  // if (loading) { return <div>loading...</div> }
 
-  if (!user) return <Login />;
+  // AUTH TEMPORARILY DISABLED
+  // if (!user) return <Login />;
 
   const NavContent = () => (
     <nav className="flex flex-col h-full">

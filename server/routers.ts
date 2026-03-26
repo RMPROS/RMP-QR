@@ -12,8 +12,8 @@ const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const t = initTRPC.context<TrpcContext>().create({ transformer: superjson });
 
 const publicProcedure = t.procedure;
+// AUTH TEMPORARILY DISABLED
 const adminProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.isAdmin) throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" });
   return next({ ctx });
 });
 
