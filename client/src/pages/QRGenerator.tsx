@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
-import { Download, QrCode, Package, FileSpreadsheet, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, QrCode, Package, FileSpreadsheet, Eye, ChevronLeft, ChevronRight, Plus, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import JSZip from "jszip";
@@ -36,10 +36,30 @@ export default function QRGenerator() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [previewing, setPreviewing] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [showAddPanel, setShowAddPanel] = useState(false);
+  const [addFrom, setAddFrom] = useState("");
+  const [addTo, setAddTo] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const [progress, setProgress] = useState(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: maxData, refetch: refetchMax } = trpc.qr.maxQrNumber.useQuery();
+  const maxQrNumber = maxData ?? 0;
+  const addCodesMutation = trpc.qr.addCodes.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Added ${result.added} new QR codes`);
+      setShowAddPanel(false);
+      setAddFrom("");
+      setAddTo("");
+      refetchMax();
+      utils.qr.list.invalidate();
+    },
+    onError: (err) => toast.error(`Failed: ${err.message}`),
+  });
+
+  const utils = trpc.useUtils();
 
   const { data, isLoading } = trpc.qr.list.useQuery(
     { page, pageSize: PAGE_SIZE, search: debouncedSearch || undefined, status: "all" },
@@ -159,6 +179,22 @@ export default function QRGenerator() {
     }
   };
 
+  const handleAddCodes = () => {
+    const from = parseInt(addFrom);
+    const to = parseInt(addTo);
+    if (isNaN(from) || isNaN(to) || from < 1 || to < from) {
+      toast.error("Please enter a valid range");
+      return;
+    }
+    if (to - from > 499) {
+      toast.error("Maximum 500 codes at a time");
+      return;
+    }
+    setIsAdding(true);
+    addCodesMutation.mutate({ from, to });
+    setIsAdding(false);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -168,6 +204,16 @@ export default function QRGenerator() {
           <p className="text-sm text-muted-foreground mt-0.5">
             {selected.size > 0 ? `${selected.size} selected` : `${total} total codes`} · select codes then download
           </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setShowAddPanel((v) => !v)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border"
+            style={{ borderColor: "#0A2342", color: "#0A2342" }}
+          >
+            <Plus className="h-4 w-4" />
+            Add QR Codes
+          </button>
         </div>
         {selected.size > 0 && (
           <div className="flex gap-2 flex-wrap">
@@ -194,6 +240,65 @@ export default function QRGenerator() {
           </div>
         )}
       </div>
+
+      {/* Add Codes Panel */}
+      {showAddPanel && (
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h2 className="font-semibold text-sm">Add New QR Codes</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Current highest QR #: <span className="font-mono font-semibold" style={{ color: "#0A2342" }}>{String(maxQrNumber).padStart(3, "0")}</span> · next available: <span className="font-mono font-semibold" style={{ color: "#FF8C00" }}>{String(maxQrNumber + 1).padStart(3, "0")}</span>
+              </p>
+            </div>
+            <button onClick={() => setShowAddPanel(false)} className="text-muted-foreground hover:text-foreground text-lg leading-none">✕</button>
+          </div>
+          <div className="flex items-end gap-3 flex-wrap">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">From QR #</label>
+              <input
+                type="number"
+                value={addFrom}
+                onChange={(e) => setAddFrom(e.target.value)}
+                placeholder={String(maxQrNumber + 1)}
+                min={1}
+                className="w-28 px-3 py-2 rounded-lg border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">To QR #</label>
+              <input
+                type="number"
+                value={addTo}
+                onChange={(e) => setAddTo(e.target.value)}
+                placeholder={String(maxQrNumber + 100)}
+                min={1}
+                className="w-28 px-3 py-2 rounded-lg border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">Total</label>
+              <div className="w-20 px-3 py-2 rounded-lg border bg-muted text-sm font-mono text-muted-foreground">
+                {addFrom && addTo && parseInt(addTo) >= parseInt(addFrom)
+                  ? parseInt(addTo) - parseInt(addFrom) + 1
+                  : "—"}
+              </div>
+            </div>
+            <button
+              onClick={handleAddCodes}
+              disabled={addCodesMutation.isPending || !addFrom || !addTo}
+              className="px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
+              style={{ backgroundColor: "#0A2342", color: "#ffffff" }}
+            >
+              {addCodesMutation.isPending ? "Adding…" : "Add Codes"}
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5 mt-3">
+            <AlertCircle className="h-3.5 w-3.5" style={{ color: "#FF8C00" }} />
+            <p className="text-xs text-muted-foreground">After adding codes, generate and print the QR images from this page, then run the SQL in Neon if needed.</p>
+          </div>
+        </div>
+      )}
 
       {/* Progress bar */}
       {isDownloadingZip && (

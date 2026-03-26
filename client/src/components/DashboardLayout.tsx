@@ -29,13 +29,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const NavContent = () => (
     <nav className="flex flex-col h-full" style={{ backgroundColor: "#0A2342" }}>
       {/* Logo / Brand */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-white/10">
-        <div className="h-8 w-8 rounded-lg overflow-hidden bg-white flex items-center justify-center shrink-0">
-          <img src="/logo.png" alt="RMP" className="h-7 w-7 object-contain" />
-        </div>
-        <div className="flex flex-col leading-tight">
-          <span className="text-xs font-bold text-white tracking-tight">Rental Marketing</span>
-          <span className="text-xs font-bold tracking-tight" style={{ color: "#FF8C00" }}>Pros</span>
+      <div className="flex items-center justify-center px-4 py-5 border-b border-white/10">
+        <div className="h-20 w-20 rounded-xl overflow-hidden bg-white flex items-center justify-center shadow-md">
+          <img src="/logo.png" alt="Rental Marketing Pros" className="h-18 w-18 object-contain p-1" />
         </div>
       </div>
 
@@ -105,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <Menu className="h-5 w-5" style={{ color: "#0A2342" }} />
           </button>
-          <img src="/logo.png" alt="RMP" className="h-7 w-7 object-contain" />
+          <img src="/logo.png" alt="RMP" className="h-9 w-9 object-contain" />
           <span className="font-semibold text-sm" style={{ color: "#0A2342" }}>
             {navItems.find((n) => n.path === location)?.label ?? "QR Manager"}
           </span>

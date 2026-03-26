@@ -147,6 +147,29 @@ async function getAllScanLogs(opts: { page: number; pageSize: number; search?: s
   };
 }
 
+
+async function getMaxQrNumber(): Promise<number> {
+  const raw = await sql.query(`SELECT COALESCE(MAX(qr_number), 0)::int as max FROM qr_codes`);
+  const rows = (raw as any).rows ?? raw;
+  return Number(rows[0]?.max ?? 0);
+}
+
+async function addQrCodes(from: number, to: number): Promise<number> {
+  const values = [];
+  for (let i = from; i <= to; i++) {
+    const padded = String(i).padStart(3, "0");
+    values.push(`(${i}, '/qr/${padded}', true)`);
+  }
+  if (values.length === 0) return 0;
+  const raw = await sql.query(
+    `INSERT INTO qr_codes (qr_number, redirect_path, is_active)
+     OVERRIDING SYSTEM VALUE
+     VALUES ${values.join(",")}
+     ON CONFLICT (qr_number) DO NOTHING`
+  );
+  return to - from + 1;
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 const COOKIE_NAME = "qr_admin_session";
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -218,6 +241,15 @@ const appRouter = t.router({
     allScanLogs: adminProcedure
       .input(z.object({ page: z.number().min(1).default(1), pageSize: z.number().min(1).max(100).default(50), search: z.string().optional() }))
       .query(({ input }) => getAllScanLogs(input)),
+    maxQrNumber: adminProcedure.query(() => getMaxQrNumber()),
+    addCodes: adminProcedure
+      .input(z.object({ from: z.number().min(1), to: z.number().min(1) }))
+      .mutation(async ({ input }) => {
+        if (input.to < input.from) throw new TRPCError({ code: "BAD_REQUEST", message: "End must be >= start" });
+        if (input.to - input.from > 499) throw new TRPCError({ code: "BAD_REQUEST", message: "Max 500 codes at a time" });
+        const count = await addQrCodes(input.from, input.to);
+        return { added: count };
+      }),
   }),
 });
 
@@ -240,12 +272,24 @@ app.get("/qr/:id", async (req, res) => {
     const deviceType = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : /bot|crawler/i.test(ua) ? "bot" : "desktop";
     const referrer = (req.headers.referer as string) || null;
 
-    // Geo lookup + scan log BEFORE redirect so Vercel doesn't freeze the function
+    // Geo lookup — use Vercel's built-in geo headers first (free, no API call needed)
+    // Vercel sets these automatically: x-vercel-ip-city, x-vercel-ip-country, x-vercel-ip-country-region
     let city: string | null = null;
     let region: string | null = null;
     let country: string | null = null;
-    try {
-      if (ip && ip !== "::1" && !ip.startsWith("127.") && !ip.startsWith("192.168.") && !ip.startsWith("10.")) {
+
+    const vercelCity = req.headers["x-vercel-ip-city"] as string | undefined;
+    const vercelCountry = req.headers["x-vercel-ip-country"] as string | undefined;
+    const vercelRegion = req.headers["x-vercel-ip-country-region"] as string | undefined;
+
+    if (vercelCountry) {
+      // Vercel geo headers available — use them directly
+      city = vercelCity ? decodeURIComponent(vercelCity) : null;
+      country = vercelCountry ?? null;
+      region = vercelRegion ?? null;
+    } else if (ip && ip !== "::1" && !ip.startsWith("127.") && !ip.startsWith("192.168.") && !ip.startsWith("10.")) {
+      // Fallback to ip-api.com
+      try {
         const geo = await fetch(`https://ip-api.com/json/${ip}?fields=city,regionName,country,status`);
         if (geo.ok) {
           const data = await geo.json() as any;
@@ -255,8 +299,8 @@ app.get("/qr/:id", async (req, res) => {
             country = data.country ?? null;
           }
         }
-      }
-    } catch { /* geo is best-effort */ }
+      } catch { /* geo is best-effort */ }
+    }
 
     try {
       await Promise.all([
@@ -273,3 +317,4 @@ app.get("/qr/:id", async (req, res) => {
 app.use("/api/trpc", trpcExpress.createExpressMiddleware({ router: appRouter, createContext }));
 
 export default app;
+// This line intentionally left to check EOF
