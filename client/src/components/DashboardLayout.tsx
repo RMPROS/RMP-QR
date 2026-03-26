@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { QrCode, BarChart2, History, LogOut, Menu } from "lucide-react";
+import { QrCode, BarChart2, History, LogOut, Menu, Download } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import Login from "@/pages/Login";
@@ -8,6 +8,7 @@ const navItems = [
   { icon: QrCode, label: "QR Codes", path: "/" },
   { icon: BarChart2, label: "Stats", path: "/stats" },
   { icon: History, label: "Scan History", path: "/scan-history" },
+  { icon: Download, label: "QR Generator", path: "/qr-generator" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

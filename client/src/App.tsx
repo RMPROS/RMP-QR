@@ -4,6 +4,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import QRDashboard from "./pages/QRDashboard";
 import Stats from "./pages/Stats";
 import ScanHistory from "./pages/ScanHistory";
+import QRGenerator from "./pages/QRGenerator";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/" component={QRDashboard} />
           <Route path="/stats" component={Stats} />
           <Route path="/scan-history" component={ScanHistory} />
+          <Route path="/qr-generator" component={QRGenerator} />
           <Route>
             <div className="flex items-center justify-center h-64">
               <p className="text-muted-foreground">Page not found.</p>

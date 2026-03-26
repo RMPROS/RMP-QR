@@ -54,7 +54,9 @@
     "superjson": "^2.2.6",
     "tailwind-merge": "^3.5.0",
     "wouter": "^3.9.0",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "qrcode": "^1.5.4",
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -71,7 +73,8 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.2",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.1",
+    "@types/qrcode": "^1.5.5"
   },
   "engines": {
     "node": "20.x"
