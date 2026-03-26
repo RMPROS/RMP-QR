@@ -228,9 +228,9 @@ app.use(express.json());
 app.get("/api/debug", async (_req, res) => {
   try {
     const sql = getSql();
-    const raw = await sql.query(`SELECT id, qr_number, redirect_path, destination_url, is_active, scan_count FROM qr_codes ORDER BY qr_number LIMIT 5`);
+    const raw = await sql.query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'qr_codes' ORDER BY ordinal_position`);
     const rows = (raw as any).rows ?? raw;
-    res.json({ success: true, count: rows.length, sample: rows });
+    res.json({ columns: rows });
   } catch (err: any) {
     res.json({ success: false, error: err?.message ?? String(err) });
   }
