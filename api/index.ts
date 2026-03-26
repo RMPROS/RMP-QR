@@ -238,11 +238,30 @@ app.get("/qr/:id", async (req, res) => {
     const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || null;
     const ua = req.headers["user-agent"] || "";
     const deviceType = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : /bot|crawler/i.test(ua) ? "bot" : "desktop";
-    // Log scan BEFORE redirect so Vercel doesn't freeze the function early
+    const referrer = (req.headers.referer as string) || null;
+
+    // Geo lookup + scan log BEFORE redirect so Vercel doesn't freeze the function
+    let city: string | null = null;
+    let region: string | null = null;
+    let country: string | null = null;
+    try {
+      if (ip && ip !== "::1" && !ip.startsWith("127.") && !ip.startsWith("192.168.") && !ip.startsWith("10.")) {
+        const geo = await fetch(`https://ip-api.com/json/${ip}?fields=city,regionName,country,status`);
+        if (geo.ok) {
+          const data = await geo.json() as any;
+          if (data.status === "success") {
+            city = data.city ?? null;
+            region = data.regionName ?? null;
+            country = data.country ?? null;
+          }
+        }
+      }
+    } catch { /* geo is best-effort */ }
+
     try {
       await Promise.all([
         incrementScanCount(qr.id),
-        insertScanLog({ qrCodeId: qr.id, qrNumber: qr.qrNumber, ipAddress: ip, city: null, region: null, country: null, deviceType, userAgent: ua || null, referrer: (req.headers.referer as string) || null }),
+        insertScanLog({ qrCodeId: qr.id, qrNumber: qr.qrNumber, ipAddress: ip, city, region, country, deviceType, userAgent: ua || null, referrer }),
       ]);
     } catch (logErr) {
       console.error("[QR] Scan log error:", logErr);
