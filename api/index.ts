@@ -37,8 +37,8 @@ async function listQrCodes(opts: { page: number; pageSize: number; search?: stri
   const offsetParam = params.length;
 
   const [rows, countRows] = await Promise.all([
-    sql(`SELECT * FROM qr_codes ${where} ORDER BY qr_number LIMIT $${limitParam} OFFSET $${offsetParam}`, params),
-    sql(`SELECT COUNT(*)::int as count FROM qr_codes ${where}`, params.slice(0, params.length - 2)),
+    sql.query(`SELECT * FROM qr_codes ${where} ORDER BY qr_number LIMIT $${limitParam} OFFSET $${offsetParam}`, params),
+    sql.query(`SELECT COUNT(*)::int as count FROM qr_codes ${where}`, params.slice(0, params.length - 2)),
   ]);
 
   return {
@@ -58,7 +58,7 @@ async function listQrCodes(opts: { page: number; pageSize: number; search?: stri
 
 async function getQrCodeByPath(path: string) {
   const sql = getSql();
-  const rows = await sql(`SELECT * FROM qr_codes WHERE redirect_path = $1 LIMIT 1`, [path]);
+  const rows = await sql.query(`SELECT * FROM qr_codes WHERE redirect_path = $1 LIMIT 1`, [path]);
   if (!rows[0]) return null;
   const r = rows[0] as any;
   return { id: r.id, qrNumber: r.qr_number, redirectPath: r.redirect_path, destinationUrl: r.destination_url, isActive: r.is_active, scanCount: r.scan_count };
@@ -66,27 +66,27 @@ async function getQrCodeByPath(path: string) {
 
 async function updateQrCodeDestination(id: number, destinationUrl: string) {
   const sql = getSql();
-  await sql(`UPDATE qr_codes SET destination_url = $1, updated_at = NOW() WHERE id = $2`, [destinationUrl, id]);
+  await sql.query(`UPDATE qr_codes SET destination_url = $1, updated_at = NOW() WHERE id = $2`, [destinationUrl, id]);
 }
 
 async function bulkUpdateDestination(ids: number[], destinationUrl: string) {
   const sql = getSql();
-  await sql(`UPDATE qr_codes SET destination_url = $1, updated_at = NOW() WHERE id = ANY($2::int[])`, [destinationUrl, ids]);
+  await sql.query(`UPDATE qr_codes SET destination_url = $1, updated_at = NOW() WHERE id = ANY($2::int[])`, [destinationUrl, ids]);
 }
 
 async function toggleQrCodeStatus(id: number, isActive: boolean) {
   const sql = getSql();
-  await sql(`UPDATE qr_codes SET is_active = $1, updated_at = NOW() WHERE id = $2`, [isActive, id]);
+  await sql.query(`UPDATE qr_codes SET is_active = $1, updated_at = NOW() WHERE id = $2`, [isActive, id]);
 }
 
 async function incrementScanCount(id: number) {
   const sql = getSql();
-  await sql(`UPDATE qr_codes SET scan_count = scan_count + 1, updated_at = NOW() WHERE id = $1`, [id]);
+  await sql.query(`UPDATE qr_codes SET scan_count = scan_count + 1, updated_at = NOW() WHERE id = $1`, [id]);
 }
 
 async function getQrStats() {
   const sql = getSql();
-  const rows = await sql(`
+  const rows = await sql.query(`
     SELECT
       COUNT(*)::int as total,
       SUM(CASE WHEN is_active THEN 1 ELSE 0 END)::int as active,
@@ -101,21 +101,18 @@ async function getQrStats() {
 
 async function getTopQrCodes(limit: number) {
   const sql = getSql();
-  const rows = await sql(`SELECT * FROM qr_codes ORDER BY scan_count DESC LIMIT ${limit}`);
+  const rows = await sql.query(`SELECT * FROM qr_codes ORDER BY scan_count DESC LIMIT ${limit}`);
   return rows.map((r: any) => ({ id: r.id, qrNumber: r.qr_number, redirectPath: r.redirect_path, destinationUrl: r.destination_url, isActive: r.is_active, scanCount: r.scan_count }));
 }
 
 async function insertScanLog(log: { qrCodeId: number; qrNumber: number; ipAddress: string | null; city: string | null; region: string | null; country: string | null; deviceType: string; userAgent: string | null; referrer: string | null }) {
   const sql = getSql();
-  await sql(
-    `INSERT INTO scan_logs (qr_code_id, qr_number, ip_address, city, region, country, device_type, user_agent, referrer) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [log.qrCodeId, log.qrNumber, log.ipAddress, log.city, log.region, log.country, log.deviceType, log.userAgent, log.referrer]
-  );
+  await sql.query(`INSERT INTO scan_logs (qr_code_id, qr_number, ip_address, city, region, country, device_type, user_agent, referrer) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [log.qrCodeId, log.qrNumber, log.ipAddress, log.city, log.region, log.country, log.deviceType, log.userAgent, log.referrer]);
 }
 
 async function getScanLogsByQrId(qrCodeId: number, limit: number) {
   const sql = getSql();
-  const rows = await sql(`SELECT * FROM scan_logs WHERE qr_code_id = $1 ORDER BY scanned_at DESC LIMIT ${limit}`, [qrCodeId]);
+  const rows = await sql.query(`SELECT * FROM scan_logs WHERE qr_code_id = $1 ORDER BY scanned_at DESC LIMIT ${limit}`, [qrCodeId]);
   return rows.map((r: any) => ({ id: r.id, qrCodeId: r.qr_code_id, qrNumber: r.qr_number, ipAddress: r.ip_address, city: r.city, region: r.region, country: r.country, deviceType: r.device_type, userAgent: r.user_agent, referrer: r.referrer, scannedAt: r.scanned_at }));
 }
 
@@ -138,8 +135,8 @@ async function getAllScanLogs(opts: { page: number; pageSize: number; search?: s
   const offsetParam = params.length;
 
   const [rows, countRows] = await Promise.all([
-    sql(`SELECT * FROM scan_logs ${where} ORDER BY scanned_at DESC LIMIT $${limitParam} OFFSET $${offsetParam}`, params),
-    sql(`SELECT COUNT(*)::int as count FROM scan_logs ${where}`, params.slice(0, params.length - 2)),
+    sql.query(`SELECT * FROM scan_logs ${where} ORDER BY scanned_at DESC LIMIT $${limitParam} OFFSET $${offsetParam}`, params),
+    sql.query(`SELECT COUNT(*)::int as count FROM scan_logs ${where}`, params.slice(0, params.length - 2)),
   ]);
   return {
     rows: rows.map((r: any) => ({ id: r.id, qrCodeId: r.qr_code_id, qrNumber: r.qr_number, ipAddress: r.ip_address, city: r.city, region: r.region, country: r.country, deviceType: r.device_type, userAgent: r.user_agent, referrer: r.referrer, scannedAt: r.scanned_at })),
@@ -217,6 +214,17 @@ export type AppRouter = typeof appRouter;
 // ── Express ───────────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
+
+
+app.get("/api/debug", async (_req, res) => {
+  try {
+    const sql = getSql();
+    const rows = await sql.query(`SELECT id, qr_number, redirect_path, destination_url, is_active, scan_count FROM qr_codes ORDER BY qr_number LIMIT 5`);
+    res.json({ success: true, count: rows.length, sample: rows });
+  } catch (err: any) {
+    res.json({ success: false, error: err?.message ?? String(err) });
+  }
+});
 
 app.get("/qr/:id", async (req, res) => {
   const paddedId = req.params.id.padStart(3, "0");
