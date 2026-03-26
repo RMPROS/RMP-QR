@@ -238,8 +238,16 @@ app.get("/qr/:id", async (req, res) => {
     const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || null;
     const ua = req.headers["user-agent"] || "";
     const deviceType = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : /bot|crawler/i.test(ua) ? "bot" : "desktop";
+    // Log scan BEFORE redirect so Vercel doesn't freeze the function early
+    try {
+      await Promise.all([
+        incrementScanCount(qr.id),
+        insertScanLog({ qrCodeId: qr.id, qrNumber: qr.qrNumber, ipAddress: ip, city: null, region: null, country: null, deviceType, userAgent: ua || null, referrer: (req.headers.referer as string) || null }),
+      ]);
+    } catch (logErr) {
+      console.error("[QR] Scan log error:", logErr);
+    }
     res.redirect(302, qr.destinationUrl);
-    try { await Promise.all([incrementScanCount(qr.id), insertScanLog({ qrCodeId: qr.id, qrNumber: qr.qrNumber, ipAddress: ip, city: null, region: null, country: null, deviceType, userAgent: ua || null, referrer: (req.headers.referer as string) || null })]); } catch {}
   } catch { if (!res.headersSent) res.status(500).send("Server error."); }
 });
 

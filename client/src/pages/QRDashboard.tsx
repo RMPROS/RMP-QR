@@ -29,7 +29,7 @@ export default function QRDashboard() {
 
   const { data, isLoading } = trpc.qr.list.useQuery(
     { page, pageSize: PAGE_SIZE, search: debouncedSearch || undefined, status },
-    { placeholderData: (prev) => prev }
+    { placeholderData: (prev) => prev, refetchInterval: 30_000, refetchIntervalInBackground: false }
   );
 
   const updateDest = trpc.qr.updateDestination.useMutation({

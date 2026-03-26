@@ -3,8 +3,8 @@ import { QrCode, Activity, TrendingUp, CheckCircle, XCircle, Settings } from "lu
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function Stats() {
-  const { data: stats, isLoading: statsLoading } = trpc.qr.stats.useQuery();
-  const { data: topCodes, isLoading: topLoading } = trpc.qr.topCodes.useQuery({ limit: 10 });
+  const { data: stats, isLoading: statsLoading } = trpc.qr.stats.useQuery(undefined, { refetchInterval: 30_000, refetchIntervalInBackground: false });
+  const { data: topCodes, isLoading: topLoading } = trpc.qr.topCodes.useQuery({ limit: 10 }, { refetchInterval: 30_000, refetchIntervalInBackground: false });
 
   const statCards = [
     { label: "Total QR Codes", value: stats?.total ?? 0, icon: QrCode, color: "text-primary" },
