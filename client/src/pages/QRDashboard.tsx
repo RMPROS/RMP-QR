@@ -45,16 +45,16 @@ export default function QRDashboard() {
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  const allPageSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
+  const allPageSelected = rows.length > 0 && rows.every((r) => selected.has(Number(r.id)));
 
   const toggleAll = () => {
     if (allPageSelected) {
       const next = new Set(selected);
-      rows.forEach((r) => next.delete(r.id));
+      rows.forEach((r) => next.delete(Number(r.id)));
       setSelected(next);
     } else {
       const next = new Set(selected);
-      rows.forEach((r) => next.add(r.id));
+      rows.forEach((r) => next.add(Number(r.id)));
       setSelected(next);
     }
   };
@@ -146,10 +146,10 @@ export default function QRDashboard() {
                   <td className="px-3 py-3">
                     <input
                       type="checkbox"
-                      checked={selected.has(qr.id)}
+                      checked={selected.has(Number(qr.id))}
                       onChange={() => {
                         const next = new Set(selected);
-                        if (next.has(qr.id)) next.delete(qr.id); else next.add(qr.id);
+                        const numId = Number(qr.id); if (next.has(numId)) next.delete(numId); else next.add(numId);
                         setSelected(next);
                       }}
                       className="rounded"
@@ -160,7 +160,7 @@ export default function QRDashboard() {
                     {window.location.hostname}{qr.redirectPath}
                   </td>
                   <td className="px-4 py-3 max-w-xs">
-                    {editingId === qr.id ? (
+                    {editingId === Number(qr.id) ? (
                       <div className="flex gap-2">
                         <input
                           type="url"
@@ -170,12 +170,12 @@ export default function QRDashboard() {
                           className="flex-1 px-2 py-1 rounded border text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                           autoFocus
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") updateDest.mutate({ id: qr.id, destinationUrl: editUrl });
+                            if (e.key === "Enter") updateDest.mutate({ id: Number(qr.id), destinationUrl: editUrl });
                             if (e.key === "Escape") setEditingId(null);
                           }}
                         />
                         <button
-                          onClick={() => updateDest.mutate({ id: qr.id, destinationUrl: editUrl })}
+                          onClick={() => updateDest.mutate({ id: Number(qr.id), destinationUrl: editUrl })}
                           disabled={updateDest.isPending}
                           className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs hover:opacity-90 disabled:opacity-50"
                         >Save</button>
@@ -195,7 +195,7 @@ export default function QRDashboard() {
                   <td className="px-4 py-3 text-center font-medium">{qr.scanCount.toLocaleString()}</td>
                   <td className="px-4 py-3 text-center">
                     <button
-                      onClick={() => toggleStatus.mutate({ id: qr.id, isActive: !qr.isActive })}
+                      onClick={() => toggleStatus.mutate({ id: Number(qr.id), isActive: !qr.isActive })}
                       className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                         qr.isActive
                           ? "bg-green-100 text-green-700 hover:bg-green-200"
@@ -208,14 +208,14 @@ export default function QRDashboard() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
                       <button
-                        onClick={() => { setEditingId(qr.id); setEditUrl(qr.destinationUrl ?? ""); }}
+                        onClick={() => { setEditingId(Number(qr.id)); setEditUrl(qr.destinationUrl ?? ""); }}
                         className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
                         title="Edit destination"
                       >
                         <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
                       <button
-                        onClick={() => setScanDrawerQr({ id: qr.id, number: qr.qrNumber })}
+                        onClick={() => setScanDrawerQr({ id: Number(qr.id), number: Number(qr.qrNumber) })}
                         className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
                         title="View scan history"
                       >
