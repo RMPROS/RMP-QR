@@ -38,7 +38,7 @@ export default function QRDashboard() {
       setEditModal(null);
       toast.success("Destination updated");
     },
-    onError: () => toast.error("Failed to update destination"),
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
   });
 
   const bulkUpdate = trpc.qr.bulkUpdateDestination.useMutation({
